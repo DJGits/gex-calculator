@@ -187,15 +187,15 @@ def render_data_input_section():
                     st.session_state.current_symbol = selected_symbol  # Store the symbol
                     
                     # Display summary
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Total Contracts", len(contracts))
-                    with col2:
-                        unique_strikes = len(set(c.strike for c in contracts))
-                        st.metric("Unique Strikes", unique_strikes)
-                    with col3:
-                        total_oi = sum(c.open_interest for c in contracts)
-                        st.metric("Total Open Interest", f"{total_oi:,}")
+                    # col1, col2, col3 = st.columns(3)
+                    # with col1:
+                    #     st.metric("Total Contracts", len(contracts))
+                    # with col2:
+                    #     unique_strikes = len(set(c.strike for c in contracts))
+                    #     st.metric("Unique Strikes", unique_strikes)
+                    # with col3:
+                    #     total_oi = sum(c.open_interest for c in contracts)
+                    #     st.metric("Total Open Interest", f"{total_oi:,}")
                     
                     st.success(f"✅ Successfully fetched {len(contracts)} option contracts from Yahoo Finance!")
                     
@@ -272,13 +272,13 @@ def render_data_input_section():
                 # Display data summary
                 summary = processor.get_data_summary(df)
                 
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Total Contracts", summary['total_contracts'])
-                with col2:
-                    st.metric("Unique Strikes", summary['unique_strikes'])
-                with col3:
-                    st.metric("Total Open Interest", f"{summary['total_open_interest']:,}")
+                # col1, col2, col3 = st.columns(3)
+                # with col1:
+                #     st.metric("Total Contracts", summary['total_contracts'])
+                # with col2:
+                #     st.metric("Unique Strikes", summary['unique_strikes'])
+                # with col3:
+                #     st.metric("Total Open Interest", f"{summary['total_open_interest']:,}")
                 
                 # Show validation warnings if any
                 if summary.get('validation_errors'):
