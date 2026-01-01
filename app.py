@@ -199,9 +199,22 @@ def render_data_input_section():
                     
                     st.success(f"✅ Successfully fetched {len(contracts)} option contracts from Yahoo Finance!")
                     
-                    # Show data preview
-                    with st.expander("📋 Data Preview"):
-                        st.dataframe(options_df.head(10))
+                    # Show data preview - strikes closest to spot price
+                    with st.expander("📋 Data Preview (15 strikes closest to spot)"):
+                        # Get unique strikes and find closest to current price
+                        options_df_sorted = options_df.copy()
+                        options_df_sorted['distance_from_spot'] = abs(options_df_sorted['strike'] - current_price)
+                        
+                        # Get 15 closest strikes
+                        closest_strikes = options_df_sorted.nsmallest(15, 'distance_from_spot')['strike'].unique()
+                        
+                        # Filter dataframe to show only these strikes
+                        preview_df = options_df_sorted[options_df_sorted['strike'].isin(closest_strikes)].copy()
+                        preview_df = preview_df.sort_values(['strike', 'option_type'])
+                        preview_df = preview_df.drop('distance_from_spot', axis=1)
+                        
+                        st.dataframe(preview_df, use_container_width=True)
+                        st.caption(f"Showing options for 15 strikes closest to current price (${current_price:.2f})")
                 else:
                     st.warning("No valid options data found.")
                     
@@ -280,9 +293,25 @@ def render_data_input_section():
                 
                 st.success(f"✅ Successfully loaded {len(contracts)} option contracts!")
                 
-                # Show data preview
-                with st.expander("📋 Data Preview"):
-                    st.dataframe(df.head(10))
+                # Show data preview - strikes closest to spot price
+                with st.expander("📋 Data Preview (15 strikes closest to spot)"):
+                    # Get current price from sidebar
+                    current_price = st.session_state.current_price
+                    
+                    # Get unique strikes and find closest to current price
+                    df_sorted = df.copy()
+                    df_sorted['distance_from_spot'] = abs(df_sorted['strike'] - current_price)
+                    
+                    # Get 15 closest strikes
+                    closest_strikes = df_sorted.nsmallest(15, 'distance_from_spot')['strike'].unique()
+                    
+                    # Filter dataframe to show only these strikes
+                    preview_df = df_sorted[df_sorted['strike'].isin(closest_strikes)].copy()
+                    preview_df = preview_df.sort_values(['strike', 'option_type'])
+                    preview_df = preview_df.drop('distance_from_spot', axis=1)
+                    
+                    st.dataframe(preview_df, use_container_width=True)
+                    st.caption(f"Showing options for 15 strikes closest to current price (${current_price:.2f})")
                 
             except DataValidationError as e:
                 st.error(f"❌ Data validation error: {str(e)}")
@@ -325,9 +354,22 @@ def render_data_input_section():
                 
                 st.success(f"✅ Generated {len(contracts)} sample option contracts!")
                 
-                # Show data preview
-                with st.expander("📋 Sample Data Preview"):
-                    st.dataframe(df.head(10))
+                # Show data preview - strikes closest to spot price
+                with st.expander("📋 Sample Data Preview (15 strikes closest to spot)"):
+                    # Get unique strikes and find closest to spot price
+                    df_sorted = df.copy()
+                    df_sorted['distance_from_spot'] = abs(df_sorted['strike'] - spot_price)
+                    
+                    # Get 15 closest strikes
+                    closest_strikes = df_sorted.nsmallest(15, 'distance_from_spot')['strike'].unique()
+                    
+                    # Filter dataframe to show only these strikes
+                    preview_df = df_sorted[df_sorted['strike'].isin(closest_strikes)].copy()
+                    preview_df = preview_df.sort_values(['strike', 'option_type'])
+                    preview_df = preview_df.drop('distance_from_spot', axis=1)
+                    
+                    st.dataframe(preview_df, use_container_width=True)
+                    st.caption(f"Showing options for 15 strikes closest to spot price (${spot_price:.2f})")
                 
             except Exception as e:
                 st.error(f"❌ Error generating sample data: {str(e)}")
