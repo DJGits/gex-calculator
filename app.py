@@ -223,34 +223,34 @@ def render_data_input_section():
             except Exception as e:
                 st.error(f"❌ Unexpected error: {str(e)}")
         
-        # Show options summary
-        if st.button("ℹ️ Show Options Summary", type="secondary"):
-            try:
-                with st.spinner("Getting options summary..."):
-                    summary = yf_fetcher.get_options_summary(selected_symbol)
+        # # Show options summary
+        # if st.button("ℹ️ Show Options Summary", type="secondary"):
+        #     try:
+        #         with st.spinner("Getting options summary..."):
+        #             summary = yf_fetcher.get_options_summary(selected_symbol)
                 
-                st.subheader(f"📊 {summary['symbol']} Options Summary")
+        #         st.subheader(f"📊 {summary['symbol']} Options Summary")
                 
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.write(f"**Company:** {summary['company_name']}")
-                    st.write(f"**Current Price:** ${summary['current_price']:.2f}")
-                    st.write(f"**Available Expirations:** {summary['available_expirations']}")
+        #         col1, col2 = st.columns(2)
+        #         with col1:
+        #             st.write(f"**Company:** {summary['company_name']}")
+        #             st.write(f"**Current Price:** ${summary['current_price']:.2f}")
+        #             st.write(f"**Available Expirations:** {summary['available_expirations']}")
                 
-                with col2:
-                    sample_stats = summary['sample_expiration_stats']
-                    st.write(f"**Sample Expiration Stats:**")
-                    st.write(f"- Calls: {sample_stats['total_calls']}")
-                    st.write(f"- Puts: {sample_stats['total_puts']}")
-                    st.write(f"- Strike Range: {sample_stats['strike_range']['min']:.0f} - {sample_stats['strike_range']['max']:.0f}")
+        #         with col2:
+        #             sample_stats = summary['sample_expiration_stats']
+        #             st.write(f"**Sample Expiration Stats:**")
+        #             st.write(f"- Calls: {sample_stats['total_calls']}")
+        #             st.write(f"- Puts: {sample_stats['total_puts']}")
+        #             st.write(f"- Strike Range: {sample_stats['strike_range']['min']:.0f} - {sample_stats['strike_range']['max']:.0f}")
                 
-                if summary['expiration_dates']:
-                    st.write("**Next 10 Expiration Dates:**")
-                    for i, exp_date in enumerate(summary['expiration_dates'][:10], 1):
-                        st.write(f"{i}. {exp_date}")
+        #         if summary['expiration_dates']:
+        #             st.write("**Next 10 Expiration Dates:**")
+        #             for i, exp_date in enumerate(summary['expiration_dates'][:10], 1):
+        #                 st.write(f"{i}. {exp_date}")
                         
-            except YFinanceFetchError as e:
-                st.error(f"❌ Error getting summary: {str(e)}")
+        #     except YFinanceFetchError as e:
+        #         st.error(f"❌ Error getting summary: {str(e)}")
     
     with tab2:
         st.subheader("Upload Options Chain Data")
