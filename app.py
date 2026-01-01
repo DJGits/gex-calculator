@@ -213,7 +213,7 @@ def render_data_input_section():
                         preview_df = preview_df.sort_values(['strike', 'option_type'])
                         preview_df = preview_df.drop('distance_from_spot', axis=1)
                         
-                        st.dataframe(preview_df, use_container_width=True)
+                        st.dataframe(preview_df, width='stretch')
                         st.caption(f"Showing options for 15 strikes closest to current price (${current_price:.2f})")
                 else:
                     st.warning("No valid options data found.")
@@ -310,7 +310,7 @@ def render_data_input_section():
                     preview_df = preview_df.sort_values(['strike', 'option_type'])
                     preview_df = preview_df.drop('distance_from_spot', axis=1)
                     
-                    st.dataframe(preview_df, use_container_width=True)
+                    st.dataframe(preview_df, width='stretch')
                     st.caption(f"Showing options for 15 strikes closest to current price (${current_price:.2f})")
                 
             except DataValidationError as e:
@@ -368,7 +368,7 @@ def render_data_input_section():
                     preview_df = preview_df.sort_values(['strike', 'option_type'])
                     preview_df = preview_df.drop('distance_from_spot', axis=1)
                     
-                    st.dataframe(preview_df, use_container_width=True)
+                    st.dataframe(preview_df, width='stretch')
                     st.caption(f"Showing options for 15 strikes closest to spot price (${spot_price:.2f})")
                 
             except Exception as e:
@@ -470,9 +470,7 @@ def render_analysis_section(current_price: float, risk_free_rate: float):
             st.write(f"📝 {strength_info['description']}")
             
             st.write("**How It's Calculated:**")
-            st.write("```")
-            st.write("Strength = |Total Net Gamma| / (Current Price × Total Open Interest)")
-            st.write("```")
+            st.code("Strength = |Total Net Gamma| / (Current Price × Total Open Interest)")
             st.write("This normalizes gamma exposure by market size and price level")
         
         with col2:
@@ -704,7 +702,7 @@ def render_analysis_section(current_price: float, risk_free_rate: float):
             with col1:
                 if walls['call_walls']:
                     st.write("**Call Walls (Resistance)**")
-                    for wall in walls['call_walls'][:3]:  # Show top 3
+                    for wall in walls['call_walls'][:5]:  # Show top 5
                         distance_pct = (wall.distance_from_spot / current_price) * 100
                         st.write(f"#{wall.significance_rank}: {wall.strike:.0f} "
                                f"({distance_pct:+.1f}%) - {wall.exposure_value:,.0f}")
@@ -712,7 +710,7 @@ def render_analysis_section(current_price: float, risk_free_rate: float):
             with col2:
                 if walls['put_walls']:
                     st.write("**Put Walls (Support)**")
-                    for wall in walls['put_walls'][:3]:  # Show top 3
+                    for wall in walls['put_walls'][:5]:  # Show top 5
                         distance_pct = (wall.distance_from_spot / current_price) * 100
                         st.write(f"#{wall.significance_rank}: {wall.strike:.0f} "
                                f"({distance_pct:+.1f}%) - {wall.exposure_value:,.0f}")
@@ -858,7 +856,7 @@ def render_positive_gamma_strategies(current_price: float, gamma_env: dict, wall
             call_walls = walls.get('call_walls', [])
             if call_walls:
                 st.markdown("**🎯 Suggested Strikes (based on call walls):**")
-                for i, wall in enumerate(call_walls[:3], 1):
+                for i, wall in enumerate(call_walls[:5], 1):
                     distance_pct = ((wall.strike - current_price) / current_price) * 100
                     if 0 < distance_pct <= 5:
                         st.markdown(f"- **{wall.strike:.0f}** ({distance_pct:+.1f}%) - Strong resistance at this level")
@@ -884,7 +882,7 @@ def render_positive_gamma_strategies(current_price: float, gamma_env: dict, wall
             put_walls = walls.get('put_walls', [])
             if put_walls:
                 st.markdown("**🎯 Suggested Strikes (based on put walls):**")
-                for i, wall in enumerate(put_walls[:3], 1):
+                for i, wall in enumerate(put_walls[:5], 1):
                     distance_pct = ((wall.strike - current_price) / current_price) * 100
                     if -5 <= distance_pct < 0:
                         st.markdown(f"- **{wall.strike:.0f}** ({distance_pct:+.1f}%) - Strong support at this level")
