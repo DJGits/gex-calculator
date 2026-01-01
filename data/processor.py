@@ -215,6 +215,23 @@ class OptionsDataProcessor:
             df['implied_volatility'] = 0.2  # Default 20% volatility
         else:
             df['implied_volatility'] = df['implied_volatility'].fillna(0.2)
+            
+            # IV Normalization Strategy:
+            # Yahoo Finance returns IV as decimal (0.25 = 25%, 1.5 = 150%)
+            # Some sources may return as percentage (25 = 25%, 150 = 150%)
+            # 
+            # Decision logic:
+            # - If IV > 10: Definitely a percentage, divide by 100 (e.g., 25 → 0.25, 150 → 1.50)
+            # - If IV <= 10: Already in decimal format, use as-is (e.g., 0.25, 1.5, 2.0)
+            #
+            # Rationale: IV rarely exceeds 1000%, so any value > 10 must be a percentage
+            # Values 0-10 are treated as decimals since they represent 0-1000% IV range
+            
+            # Apply normalization only to values > 10
+            mask = df['implied_volatility'] > 10.0
+            if mask.any():
+                print(f"Normalizing {mask.sum()} IV values from percentage to decimal")
+                df.loc[mask, 'implied_volatility'] = df.loc[mask, 'implied_volatility'] / 100.0
         
         # Ensure open interest is integer
         df['open_interest'] = df['open_interest'].fillna(0).astype(int)

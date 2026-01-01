@@ -199,9 +199,22 @@ def render_data_input_section():
                     
                     st.success(f"✅ Successfully fetched {len(contracts)} option contracts from Yahoo Finance!")
                     
-                    # Show data preview
-                    with st.expander("📋 Data Preview"):
-                        st.dataframe(options_df.head(10))
+                    # Show data preview - strikes closest to spot price
+                    with st.expander("📋 Data Preview (15 strikes closest to spot)"):
+                        # Get unique strikes and find closest to current price
+                        options_df_sorted = options_df.copy()
+                        options_df_sorted['distance_from_spot'] = abs(options_df_sorted['strike'] - current_price)
+                        
+                        # Get 15 closest strikes
+                        closest_strikes = options_df_sorted.nsmallest(15, 'distance_from_spot')['strike'].unique()
+                        
+                        # Filter dataframe to show only these strikes
+                        preview_df = options_df_sorted[options_df_sorted['strike'].isin(closest_strikes)].copy()
+                        preview_df = preview_df.sort_values(['strike', 'option_type'])
+                        preview_df = preview_df.drop('distance_from_spot', axis=1)
+                        
+                        st.dataframe(preview_df, use_container_width=True)
+                        st.caption(f"Showing options for 15 strikes closest to current price (${current_price:.2f})")
                 else:
                     st.warning("No valid options data found.")
                     
@@ -210,34 +223,34 @@ def render_data_input_section():
             except Exception as e:
                 st.error(f"❌ Unexpected error: {str(e)}")
         
-        # Show options summary
-        if st.button("ℹ️ Show Options Summary", type="secondary"):
-            try:
-                with st.spinner("Getting options summary..."):
-                    summary = yf_fetcher.get_options_summary(selected_symbol)
+        # # Show options summary
+        # if st.button("ℹ️ Show Options Summary", type="secondary"):
+        #     try:
+        #         with st.spinner("Getting options summary..."):
+        #             summary = yf_fetcher.get_options_summary(selected_symbol)
                 
-                st.subheader(f"📊 {summary['symbol']} Options Summary")
+        #         st.subheader(f"📊 {summary['symbol']} Options Summary")
                 
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.write(f"**Company:** {summary['company_name']}")
-                    st.write(f"**Current Price:** ${summary['current_price']:.2f}")
-                    st.write(f"**Available Expirations:** {summary['available_expirations']}")
+        #         col1, col2 = st.columns(2)
+        #         with col1:
+        #             st.write(f"**Company:** {summary['company_name']}")
+        #             st.write(f"**Current Price:** ${summary['current_price']:.2f}")
+        #             st.write(f"**Available Expirations:** {summary['available_expirations']}")
                 
-                with col2:
-                    sample_stats = summary['sample_expiration_stats']
-                    st.write(f"**Sample Expiration Stats:**")
-                    st.write(f"- Calls: {sample_stats['total_calls']}")
-                    st.write(f"- Puts: {sample_stats['total_puts']}")
-                    st.write(f"- Strike Range: {sample_stats['strike_range']['min']:.0f} - {sample_stats['strike_range']['max']:.0f}")
+        #         with col2:
+        #             sample_stats = summary['sample_expiration_stats']
+        #             st.write(f"**Sample Expiration Stats:**")
+        #             st.write(f"- Calls: {sample_stats['total_calls']}")
+        #             st.write(f"- Puts: {sample_stats['total_puts']}")
+        #             st.write(f"- Strike Range: {sample_stats['strike_range']['min']:.0f} - {sample_stats['strike_range']['max']:.0f}")
                 
-                if summary['expiration_dates']:
-                    st.write("**Next 10 Expiration Dates:**")
-                    for i, exp_date in enumerate(summary['expiration_dates'][:10], 1):
-                        st.write(f"{i}. {exp_date}")
+        #         if summary['expiration_dates']:
+        #             st.write("**Next 10 Expiration Dates:**")
+        #             for i, exp_date in enumerate(summary['expiration_dates'][:10], 1):
+        #                 st.write(f"{i}. {exp_date}")
                         
-            except YFinanceFetchError as e:
-                st.error(f"❌ Error getting summary: {str(e)}")
+        #     except YFinanceFetchError as e:
+        #         st.error(f"❌ Error getting summary: {str(e)}")
     
     with tab2:
         st.subheader("Upload Options Chain Data")
@@ -280,9 +293,25 @@ def render_data_input_section():
                 
                 st.success(f"✅ Successfully loaded {len(contracts)} option contracts!")
                 
-                # Show data preview
-                with st.expander("📋 Data Preview"):
-                    st.dataframe(df.head(10))
+                # Show data preview - strikes closest to spot price
+                with st.expander("📋 Data Preview (15 strikes closest to spot)"):
+                    # Get current price from sidebar
+                    current_price = st.session_state.current_price
+                    
+                    # Get unique strikes and find closest to current price
+                    df_sorted = df.copy()
+                    df_sorted['distance_from_spot'] = abs(df_sorted['strike'] - current_price)
+                    
+                    # Get 15 closest strikes
+                    closest_strikes = df_sorted.nsmallest(15, 'distance_from_spot')['strike'].unique()
+                    
+                    # Filter dataframe to show only these strikes
+                    preview_df = df_sorted[df_sorted['strike'].isin(closest_strikes)].copy()
+                    preview_df = preview_df.sort_values(['strike', 'option_type'])
+                    preview_df = preview_df.drop('distance_from_spot', axis=1)
+                    
+                    st.dataframe(preview_df, use_container_width=True)
+                    st.caption(f"Showing options for 15 strikes closest to current price (${current_price:.2f})")
                 
             except DataValidationError as e:
                 st.error(f"❌ Data validation error: {str(e)}")
@@ -325,9 +354,22 @@ def render_data_input_section():
                 
                 st.success(f"✅ Generated {len(contracts)} sample option contracts!")
                 
-                # Show data preview
-                with st.expander("📋 Sample Data Preview"):
-                    st.dataframe(df.head(10))
+                # Show data preview - strikes closest to spot price
+                with st.expander("📋 Sample Data Preview (15 strikes closest to spot)"):
+                    # Get unique strikes and find closest to spot price
+                    df_sorted = df.copy()
+                    df_sorted['distance_from_spot'] = abs(df_sorted['strike'] - spot_price)
+                    
+                    # Get 15 closest strikes
+                    closest_strikes = df_sorted.nsmallest(15, 'distance_from_spot')['strike'].unique()
+                    
+                    # Filter dataframe to show only these strikes
+                    preview_df = df_sorted[df_sorted['strike'].isin(closest_strikes)].copy()
+                    preview_df = preview_df.sort_values(['strike', 'option_type'])
+                    preview_df = preview_df.drop('distance_from_spot', axis=1)
+                    
+                    st.dataframe(preview_df, use_container_width=True)
+                    st.caption(f"Showing options for 15 strikes closest to spot price (${spot_price:.2f})")
                 
             except Exception as e:
                 st.error(f"❌ Error generating sample data: {str(e)}")
@@ -566,6 +608,92 @@ def render_analysis_section(current_price: float, risk_free_rate: float):
                 total_walls,
                 help="Number of identified gamma walls"
             )
+        
+        # Expected Move Section
+        st.subheader("📏 Expected Move (Based on Implied Volatility)")
+        
+        # Calculate average IV from options data
+        if st.session_state.options_contracts:
+            import math
+            from datetime import datetime
+            
+            # Find ATM (At-The-Money) IV for more accurate expected move
+            # ATM options have strikes closest to current price
+            contracts_with_distance = []
+            for c in st.session_state.options_contracts:
+                distance = abs(c.strike - current_price)
+                contracts_with_distance.append((c, distance))
+            
+            # Sort by distance from current price
+            contracts_with_distance.sort(key=lambda x: x[1])
+            
+            # Use ATM IV (average of closest 10 contracts, or all if less than 10)
+            atm_contracts = [c for c, _ in contracts_with_distance[:min(10, len(contracts_with_distance))]]
+            avg_iv = sum(c.implied_volatility for c in atm_contracts) / len(atm_contracts)
+            
+            # Also calculate overall average for comparison
+            overall_avg_iv = sum(c.implied_volatility for c in st.session_state.options_contracts) / len(st.session_state.options_contracts)
+            
+            # Calculate days to expiry for each contract
+            today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            days_to_expiry_list = []
+            for c in st.session_state.options_contracts:
+                expiry = c.expiry_date if isinstance(c.expiry_date, datetime) else datetime.fromisoformat(str(c.expiry_date))
+                # Normalize expiry to midnight if it has time component
+                expiry = expiry.replace(hour=0, minute=0, second=0, microsecond=0)
+                dte = max(1, (expiry - today).days)
+                days_to_expiry_list.append(dte)
+            
+            # Get average days to expiry
+            avg_dte = sum(days_to_expiry_list) / len(days_to_expiry_list)
+            
+            # Calculate expected move
+            time_factor = math.sqrt(avg_dte / 365)
+            expected_move_1sd = current_price * avg_iv * time_factor
+            expected_move_2sd = expected_move_1sd * 2
+            
+            move_pct_1sd = (expected_move_1sd / current_price) * 100
+            move_pct_2sd = (expected_move_2sd / current_price) * 100
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.info(f"**1 Standard Deviation (~68% probability)**")
+                st.write(f"**Expected Move:** ±${expected_move_1sd:.2f} (±{move_pct_1sd:.2f}%)")
+                st.write(f"**Upper Bound:** ${current_price + expected_move_1sd:.2f}")
+                st.write(f"**Lower Bound:** ${current_price - expected_move_1sd:.2f}")
+                st.caption(f"Based on {avg_iv*100:.1f}% ATM IV and {avg_dte:.0f} days to expiry")
+            
+            with col2:
+                st.warning(f"**2 Standard Deviations (~95% probability)**")
+                st.write(f"**Expected Move:** ±${expected_move_2sd:.2f} (±{move_pct_2sd:.2f}%)")
+                st.write(f"**Upper Bound:** ${current_price + expected_move_2sd:.2f}")
+                st.write(f"**Lower Bound:** ${current_price - expected_move_2sd:.2f}")
+                st.caption("Larger moves beyond this range are less likely")
+            
+            # Trading implications
+            with st.expander("💡 Trading Implications & IV Details"):
+                # Show IV comparison
+                st.write("**Implied Volatility Analysis:**")
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    st.metric("ATM IV (used)", f"{avg_iv*100:.2f}%", help="IV of options closest to current price")
+                with col_b:
+                    st.metric("Overall Avg IV", f"{overall_avg_iv*100:.2f}%", help="Average IV across all strikes")
+                
+                st.markdown("---")
+                st.write("**Strategy Suggestions Based on Expected Move:**")
+                st.write(f"- **Iron Condor:** Sell strikes outside 1SD range (${current_price - expected_move_1sd:.0f} - ${current_price + expected_move_1sd:.0f})")
+                st.write(f"- **Covered Calls:** Consider strikes near upper 1SD (~${current_price + expected_move_1sd:.0f})")
+                st.write(f"- **Cash-Secured Puts:** Consider strikes near lower 1SD (~${current_price - expected_move_1sd:.0f})")
+                st.write(f"- **Long Straddle/Strangle:** Profitable if move exceeds ${expected_move_1sd:.2f}")
+                
+                if avg_iv > 0.40:
+                    st.error(f"🔴 **HIGH IV ({avg_iv*100:.1f}%)** - Large expected move. Premium selling may be attractive.")
+                elif avg_iv > 0.25:
+                    st.info(f"🟡 **MODERATE IV ({avg_iv*100:.1f}%)** - Normal expected move. Balanced strategies recommended.")
+                else:
+                    st.success(f"🟢 **LOW IV ({avg_iv*100:.1f}%)** - Small expected move. Buying options may be attractive.")
         
         # Display walls information
         if walls['call_walls'] or walls['put_walls']:

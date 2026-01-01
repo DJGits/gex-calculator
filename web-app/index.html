@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gamma Exposure Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Gamma Exposure Calculator</h1>
+            <p class="subtitle">Calculate and visualize gamma exposure metrics for options trading</p>
+        </header>
+
+        <div class="sidebar">
+            <h2>Market Data</h2>
+            <div class="input-group">
+                <label for="currentPrice">Current Price</label>
+                <input type="number" id="currentPrice" value="450" step="0.01" min="10" max="15000">
+            </div>
+            <div class="input-group">
+                <label for="riskFreeRate">Risk-Free Rate (%)</label>
+                <input type="range" id="riskFreeRate" min="0" max="10" value="5" step="0.1">
+                <span id="riskFreeRateValue">5.0%</span>
+            </div>
+        </div>
+
+        <main>
+            <!-- Data Input Section -->
+            <section id="dataInput" class="card">
+                <h2>📁 Data Input</h2>
+                
+                <div class="tabs">
+                    <button class="tab-button active" data-tab="yahoo">🌐 Yahoo Finance</button>
+                    <button class="tab-button" data-tab="upload">📤 Upload File</button>
+                    <button class="tab-button" data-tab="sample">🔧 Sample Data</button>
+                </div>
+
+                <!-- Yahoo Finance Tab -->
+                <div id="yahoo-tab" class="tab-content active">
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>Symbol Selection</label>
+                            <div class="radio-group">
+                                <label>
+                                    <input type="radio" name="symbolMethod" value="popular" checked>
+                                    Popular Symbols
+                                </label>
+                                <label>
+                                    <input type="radio" name="symbolMethod" value="custom">
+                                    Custom Ticker
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="popularSymbols" class="input-group">
+                        <label for="symbolSelect">Select Symbol</label>
+                        <select id="symbolSelect">
+                            <option value="SPX">SPX - S&P 500 Index</option>
+                            <option value="SPY" selected>SPY - SPDR S&P 500 ETF</option>
+                            <option value="QQQ">QQQ - Invesco QQQ Trust</option>
+                            <option value="IWM">IWM - iShares Russell 2000 ETF</option>
+                            <option value="DIA">DIA - Dow Jones ETF</option>
+                            <option value="AAPL">AAPL - Apple Inc.</option>
+                            <option value="MSFT">MSFT - Microsoft</option>
+                            <option value="TSLA">TSLA - Tesla</option>
+                            <option value="NVDA">NVDA - NVIDIA</option>
+                        </select>
+                    </div>
+
+                    <div id="customSymbol" class="input-group" style="display: none;">
+                        <label for="customTicker">Enter Ticker Symbol</label>
+                        <input type="text" id="customTicker" placeholder="AAPL" style="text-transform: uppercase;">
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>Note:</strong> Due to browser CORS restrictions, Yahoo Finance data fetching requires a proxy or backend. 
+                        For demo purposes, use the Sample Data tab to generate synthetic options data.
+                    </div>
+
+                    <button class="btn btn-primary" onclick="fetchYahooData()" disabled>
+                        📊 Fetch Options Data (Requires Backend)
+                    </button>
+                </div>
+
+                <!-- Upload File Tab -->
+                <div id="upload-tab" class="tab-content">
+                    <div class="input-group">
+                        <label for="fileUpload">Choose CSV File</label>
+                        <input type="file" id="fileUpload" accept=".csv" onchange="handleFileUpload(event)">
+                        <small>Upload options chain data with columns: strike, expiry_date, option_type, open_interest</small>
+                    </div>
+                </div>
+
+                <!-- Sample Data Tab -->
+                <div id="sample-tab" class="tab-content">
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="numStrikes">Number of Strikes</label>
+                            <input type="range" id="numStrikes" min="5" max="50" value="20">
+                            <span id="numStrikesValue">20</span>
+                        </div>
+                        <div class="input-group">
+                            <label for="daysToExpiry">Days to Expiry</label>
+                            <input type="range" id="daysToExpiry" min="1" max="365" value="30">
+                            <span id="daysToExpiryValue">30</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="generateSampleData()">
+                        🎲 Generate Sample Data
+                    </button>
+                </div>
+
+                <!-- Data Preview -->
+                <div id="dataPreview" class="data-preview" style="display: none;">
+                    <h3>📋 Data Preview (15 strikes closest to spot)</h3>
+                    <div id="previewTable"></div>
+                    <div class="metrics-row">
+                        <div class="metric">
+                            <span class="metric-label">Total Contracts</span>
+                            <span class="metric-value" id="totalContracts">0</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Unique Strikes</span>
+                            <span class="metric-value" id="uniqueStrikes">0</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Total Open Interest</span>
+                            <span class="metric-value" id="totalOI">0</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Analysis Section -->
+            <section id="analysisSection" class="card" style="display: none;">
+                <h2>📈 Gamma Exposure Analysis</h2>
+                
+                <!-- Gamma Environment -->
+                <div class="gamma-environment">
+                    <h3>🌊 Gamma Environment</h3>
+                    <div class="metrics-row">
+                        <div class="metric large">
+                            <span class="metric-label">Environment Type</span>
+                            <span class="metric-value" id="envType">-</span>
+                        </div>
+                        <div class="metric large">
+                            <span class="metric-label">Strength</span>
+                            <span class="metric-value" id="envStrength">-</span>
+                        </div>
+                        <div class="metric large">
+                            <span class="metric-label">Flip Level</span>
+                            <span class="metric-value" id="flipLevel">-</span>
+                        </div>
+                    </div>
+                    <div class="alert" id="envDescription"></div>
+                </div>
+
+                <!-- Key Metrics -->
+                <div class="key-metrics">
+                    <h3>🎯 Key Metrics</h3>
+                    <div class="metrics-row">
+                        <div class="metric">
+                            <span class="metric-label">Total Net Gamma</span>
+                            <span class="metric-value" id="netGamma">0</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Weighted Avg Strike</span>
+                            <span class="metric-value" id="avgStrike">0</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Call/Put Ratio</span>
+                            <span class="metric-value" id="cpRatio">0</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Total Walls</span>
+                            <span class="metric-value" id="totalWalls">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expected Move -->
+                <div class="expected-move">
+                    <h3>📏 Expected Move (Based on Implied Volatility)</h3>
+                    <div class="metrics-row">
+                        <div class="metric large" style="background: #e3f2fd; border-left: 4px solid #2196f3;">
+                            <h4 style="margin-bottom: 10px; color: #1976d2;">1 Standard Deviation (~68% probability)</h4>
+                            <div style="text-align: left; padding: 10px;">
+                                <p><strong>Expected Move:</strong> <span id="move1SD">-</span></p>
+                                <p><strong>Upper Bound:</strong> <span id="upper1SD">-</span></p>
+                                <p><strong>Lower Bound:</strong> <span id="lower1SD">-</span></p>
+                                <p style="font-size: 12px; color: #666; margin-top: 10px;" id="ivInfo">-</p>
+                            </div>
+                        </div>
+                        <div class="metric large" style="background: #fff3e0; border-left: 4px solid #ff9800;">
+                            <h4 style="margin-bottom: 10px; color: #e65100;">2 Standard Deviations (~95% probability)</h4>
+                            <div style="text-align: left; padding: 10px;">
+                                <p><strong>Expected Move:</strong> <span id="move2SD">-</span></p>
+                                <p><strong>Upper Bound:</strong> <span id="upper2SD">-</span></p>
+                                <p><strong>Lower Bound:</strong> <span id="lower2SD">-</span></p>
+                                <p style="font-size: 12px; color: #666; margin-top: 10px;">Larger moves beyond this range are less likely</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <details class="strategy-details">
+                        <summary style="cursor: pointer; padding: 15px; background: #f5f5f5; border-radius: 5px; margin-top: 15px;">
+                            <strong>💡 Trading Implications</strong>
+                        </summary>
+                        <div style="padding: 15px; background: white; border: 1px solid #e0e0e0; border-radius: 5px; margin-top: 5px;">
+                            <p><strong>Strategy Suggestions Based on Expected Move:</strong></p>
+                            <ul id="expectedMoveStrategies" style="list-style: none; padding-left: 0;">
+                                <li>• Loading...</li>
+                            </ul>
+                            <div id="ivAssessment" class="alert" style="margin-top: 15px;"></div>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Gamma Walls -->
+                <div class="gamma-walls">
+                    <h3>🧱 Gamma Walls</h3>
+                    <div class="walls-container">
+                        <div class="wall-section">
+                            <h4>🔴 Call Walls (Resistance)</h4>
+                            <div id="callWalls"></div>
+                        </div>
+                        <div class="wall-section">
+                            <h4>🟢 Put Walls (Support)</h4>
+                            <div id="putWalls"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visualization -->
+                <div class="visualization">
+                    <h3>📊 Gamma Exposure Chart</h3>
+                    <div id="gammaChart"></div>
+                </div>
+            </section>
+
+            <!-- Strategy Recommendations -->
+            <section id="strategySection" class="card" style="display: none;">
+                <h2>💡 Options Strategy Recommendations</h2>
+                <p class="subtitle">Tailored strategy suggestions based on current gamma environment</p>
+                <div id="strategyContent"></div>
+            </section>
+        </main>
+
+        <footer>
+            <p><strong>Gamma Exposure Calculator</strong> | Built with JavaScript | 
+            <span id="footerPrice">Current Price: $0.00</span></p>
+        </footer>
+    </div>
+
+    <script src="calculations.js"></script>
+    <script src="analysis.js"></script>
+    <script src="visualization.js"></script>
+    <script src="strategies.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
