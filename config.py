@@ -1,4 +1,4 @@
-"""Configuration constants for SPX Gamma Exposure Calculator"""
+"""Configuration constants for Gamma Exposure Calculator"""
 
 # Option contract specifications
 SPX_CONTRACT_MULTIPLIER = 100

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SPX Gamma Exposure Calculator - Command Line Interface
+Gamma Exposure Calculator - Command Line Interface
 Usage: python gamma_cli.py [symbol] [expiration_option]
 
 Examples:
@@ -192,7 +192,7 @@ def display_trading_implications(gamma_env: dict, walls: dict, current_price: fl
 def main():
     """Main CLI function"""
     parser = argparse.ArgumentParser(
-        description="SPX Gamma Exposure Calculator - Command Line Interface",
+        description="Gamma Exposure Calculator - Command Line Interface",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -243,7 +243,7 @@ Examples:
         
         symbol = args.symbol.upper()
         
-        print_header(f"SPX Gamma Exposure Analysis - {symbol}")
+        print_header(f"Gamma Exposure Analysis - {symbol}")
         print(f"Analysis Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         
         # Get current price

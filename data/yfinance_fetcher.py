@@ -22,30 +22,58 @@ class YFinanceOptionsFetcher:
     
     def __init__(self):
         """Initialize the fetcher"""
-        self.supported_symbols = {
+        # Popular symbols for quick selection
+        self.popular_symbols = {
             'SPX': '^SPX',  # S&P 500 Index
             'SPY': 'SPY',   # SPDR S&P 500 ETF
             'QQQ': 'QQQ',   # Invesco QQQ Trust
             'IWM': 'IWM',   # iShares Russell 2000 ETF
             'VIX': '^VIX',  # CBOE Volatility Index
+            'DIA': 'DIA',   # Dow Jones Industrial Average ETF
+            'AAPL': 'AAPL', # Apple Inc.
+            'MSFT': 'MSFT', # Microsoft Corporation
+            'TSLA': 'TSLA', # Tesla Inc.
+            'NVDA': 'NVDA', # NVIDIA Corporation
+            'AMZN': 'AMZN', # Amazon.com Inc.
+            'GOOGL': 'GOOGL', # Alphabet Inc.
+            'META': 'META', # Meta Platforms Inc.
         }
     
     def get_available_symbols(self) -> Dict[str, str]:
-        """Get list of supported symbols"""
-        return self.supported_symbols.copy()
+        """Get list of popular symbols for quick selection"""
+        return self.popular_symbols.copy()
+    
+    def validate_symbol(self, symbol: str) -> bool:
+        """
+        Validate if a symbol exists and has options data
+        
+        Args:
+            symbol: Symbol to validate
+            
+        Returns:
+            True if symbol is valid and has options
+        """
+        try:
+            ticker = yf.Ticker(symbol)
+            # Check if options are available
+            expirations = ticker.options
+            return len(expirations) > 0
+        except:
+            return False
     
     def get_current_price(self, symbol: str) -> float:
         """
         Get current price for the underlying symbol
         
         Args:
-            symbol: Symbol to fetch (e.g., 'SPY', 'SPX')
+            symbol: Symbol to fetch (e.g., 'SPY', 'SPX', 'AAPL')
             
         Returns:
             Current price of the underlying
         """
         try:
-            yf_symbol = self.supported_symbols.get(symbol, symbol)
+            # Check if it's a popular symbol with special mapping, otherwise use as-is
+            yf_symbol = self.popular_symbols.get(symbol, symbol)
             ticker = yf.Ticker(yf_symbol)
             
             # Get current price from info or recent data
@@ -71,13 +99,13 @@ class YFinanceOptionsFetcher:
         Get available expiration dates for options
         
         Args:
-            symbol: Symbol to fetch (e.g., 'SPY', 'SPX')
+            symbol: Symbol to fetch (e.g., 'SPY', 'SPX', 'AAPL')
             
         Returns:
             List of expiration date strings
         """
         try:
-            yf_symbol = self.supported_symbols.get(symbol, symbol)
+            yf_symbol = self.popular_symbols.get(symbol, symbol)
             ticker = yf.Ticker(yf_symbol)
             
             # Get expiration dates
@@ -99,7 +127,7 @@ class YFinanceOptionsFetcher:
         Fetch options chain data from Yahoo Finance
         
         Args:
-            symbol: Symbol to fetch (e.g., 'SPY', 'SPX')
+            symbol: Symbol to fetch (e.g., 'SPY', 'SPX', 'AAPL', 'TSLA')
             expiration_date: Specific expiration date (YYYY-MM-DD format)
             include_all_expirations: Whether to include all available expirations
             
@@ -107,7 +135,7 @@ class YFinanceOptionsFetcher:
             DataFrame with options chain data
         """
         try:
-            yf_symbol = self.supported_symbols.get(symbol, symbol)
+            yf_symbol = self.popular_symbols.get(symbol, symbol)
             ticker = yf.Ticker(yf_symbol)
             
             # Get available expiration dates
@@ -266,7 +294,7 @@ class YFinanceOptionsFetcher:
             Dictionary with summary information
         """
         try:
-            yf_symbol = self.supported_symbols.get(symbol, symbol)
+            yf_symbol = self.popular_symbols.get(symbol, symbol)
             ticker = yf.Ticker(yf_symbol)
             
             # Get basic info

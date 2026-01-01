@@ -1,6 +1,6 @@
-# SPX Gamma Exposure Calculator
+# Gamma Exposure Calculator
 
-A comprehensive Streamlit web application for calculating and visualizing gamma exposure metrics for SPX (S&P 500 Index) options.
+A comprehensive Streamlit web application for calculating and visualizing gamma exposure metrics for options trading. Now supports **any stock ticker** with options data!
 
 ## Features
 
@@ -9,18 +9,22 @@ A comprehensive Streamlit web application for calculating and visualizing gamma 
 - **Wall Analysis**: Identifies call walls (resistance) and put walls (support) levels
 - **Market Metrics**: Comprehensive statistics including net gamma, weighted averages, and ratios
 - **Interactive Visualizations**: Multiple chart types with Plotly integration
+- **Universal Ticker Support**: Analyze any stock, ETF, or index with options data
 
 ### 📁 Data Input
-- **Yahoo Finance Integration**: Download live options chain data directly from Yahoo Finance
+- **Yahoo Finance Integration**: Download live options chain data for **any ticker symbol**
+- **Popular Symbols**: Quick access to SPY, QQQ, AAPL, TSLA, NVDA, and more
+- **Custom Tickers**: Enter any valid ticker symbol (e.g., AMD, NFLX, DIS, BA)
 - **File Upload**: Support for CSV and Excel files with options chain data
 - **Sample Data Generation**: Built-in synthetic data generator for testing
 - **Data Validation**: Comprehensive validation with user-friendly error messages
 
 ### 🌐 Yahoo Finance Features
-- **Real-time Data**: Fetch live options chains for SPY, QQQ, IWM, and other ETFs
+- **Real-time Data**: Fetch live options chains for any symbol with options
 - **Current Prices**: Automatic retrieval of current underlying prices
 - **Multiple Expirations**: Support for single or multiple expiration dates
 - **Comprehensive Coverage**: Access to calls, puts, strikes, open interest, and implied volatility
+- **Symbol Validation**: Automatic checking if ticker has options available
 
 ### 📈 Analysis Features
 - **Call/Put Breakdown**: Separate analysis of call and put gamma exposures
@@ -73,20 +77,35 @@ streamlit run app.py
 6. **Export**: Download results in CSV format or save charts as images
 
 ### Yahoo Finance Integration
-The app now supports fetching live options data directly from Yahoo Finance:
+The app now supports fetching live options data directly from Yahoo Finance for **any ticker symbol**:
 
-**Supported Symbols:**
+**Popular Pre-configured Symbols:**
 - **SPY**: SPDR S&P 500 ETF (most liquid SPX proxy)
 - **QQQ**: Invesco QQQ Trust (Nasdaq-100)
 - **IWM**: iShares Russell 2000 ETF
-- **SPX**: S&P 500 Index (limited options data)
-- **VIX**: CBOE Volatility Index
+- **DIA**: Dow Jones Industrial Average ETF
+- **SPX**: S&P 500 Index (^SPX)
+- **VIX**: CBOE Volatility Index (^VIX)
+- **AAPL**: Apple Inc.
+- **MSFT**: Microsoft Corporation
+- **TSLA**: Tesla Inc.
+- **NVDA**: NVIDIA Corporation
+- **AMZN**: Amazon.com Inc.
+- **GOOGL**: Alphabet Inc.
+- **META**: Meta Platforms Inc.
+
+**Custom Ticker Support:**
+- Enter **any valid ticker symbol** (e.g., AMD, NFLX, DIS, BA, JPM, etc.)
+- Automatic validation checks if options data is available
+- Works with stocks, ETFs, and indices
+- Supports thousands of optionable securities
 
 **Features:**
 - Real-time current prices
 - Multiple expiration date selection
 - Automatic data validation and cleaning
 - Live open interest and implied volatility data
+- Symbol validation before fetching
 
 ### Data Format
 Your options chain data should include these columns:

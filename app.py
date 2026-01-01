@@ -1,5 +1,5 @@
 """
-SPX Gamma Exposure Calculator - Main Streamlit Application
+Gamma Exposure Calculator - Main Streamlit Application
 """
 
 import streamlit as st
@@ -20,7 +20,7 @@ from ui.export import ExportManager, ExportError
 
 # Configure page
 st.set_page_config(
-    page_title="SPX Gamma Exposure Calculator",
+    page_title="Gamma Exposure Calculator",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -46,7 +46,7 @@ elif st.session_state.current_price > 15000.0:
 
 def render_sidebar():
     """Render sidebar with input controls"""
-    st.sidebar.header("📊 SPX Gamma Calculator")
+    st.sidebar.header("📊 Gamma Exposure Calculator")
     st.sidebar.markdown("---")
     
     # Current Price (flexible for different assets)
@@ -91,12 +91,34 @@ def render_data_input_section():
         col1, col2 = st.columns(2)
         
         with col1:
-            selected_symbol = st.selectbox(
-                "Select Symbol",
-                options=list(available_symbols.keys()),
-                index=1,  # Default to SPY
-                help="Choose the underlying symbol for options data"
+            # Symbol selection method
+            symbol_input_method = st.radio(
+                "Symbol Selection",
+                ["Popular Symbols", "Custom Ticker"],
+                help="Choose from popular symbols or enter any ticker"
             )
+            
+            if symbol_input_method == "Popular Symbols":
+                selected_symbol = st.selectbox(
+                    "Select Symbol",
+                    options=list(available_symbols.keys()),
+                    index=1,  # Default to SPY
+                    help="Choose from popular symbols with options"
+                )
+            else:
+                selected_symbol = st.text_input(
+                    "Enter Ticker Symbol",
+                    value="AAPL",
+                    help="Enter any valid ticker symbol (e.g., AAPL, TSLA, NVDA, AMD)"
+                ).upper()
+                
+                # Validate custom symbol
+                if selected_symbol:
+                    with st.spinner(f"Validating {selected_symbol}..."):
+                        if yf_fetcher.validate_symbol(selected_symbol):
+                            st.success(f"✅ {selected_symbol} has options data available")
+                        else:
+                            st.error(f"❌ {selected_symbol} does not have options data or is invalid")
             
             # Get current price and update session state
             try:
@@ -162,6 +184,7 @@ def render_data_input_section():
                     st.session_state.options_data = options_df
                     st.session_state.options_contracts = contracts
                     st.session_state.data_loaded = True
+                    st.session_state.current_symbol = selected_symbol  # Store the symbol
                     
                     # Display summary
                     col1, col2, col3 = st.columns(3)
@@ -578,9 +601,10 @@ def render_analysis_section(current_price: float, risk_free_rate: float):
         
         try:
             if chart_type == "Comprehensive Analysis":
+                symbol = st.session_state.get('current_symbol', 'Options')
                 fig = viz_engine.create_comprehensive_chart(
                     gamma_exposures, walls, current_price,
-                    "SPX Gamma Exposure with Walls"
+                    f"{symbol} Gamma Exposure with Walls"
                 )
             elif chart_type == "Net Gamma Exposure":
                 fig = viz_engine.create_gamma_exposure_chart(
@@ -611,67 +635,514 @@ def render_analysis_section(current_price: float, risk_free_rate: float):
     except Exception as e:
         st.error(f"❌ Unexpected error: {str(e)}")
 
-def render_export_section():
-    """Render export section"""
-    if not st.session_state.data_loaded or not st.session_state.gamma_exposures:
+def render_strategy_recommendations(current_price: float):
+    """Render options strategy recommendations based on gamma environment"""
+    if not st.session_state.data_loaded or not hasattr(st.session_state, 'gamma_environment'):
         return
     
-    st.header("💾 Export Data")
+    gamma_env = st.session_state.gamma_environment
+    walls = st.session_state.walls
+    strength_info = gamma_env['strength_interpretation']
     
-    try:
-        export_manager = ExportManager()
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.subheader("📊 Data Export")
-            
-            # Export gamma exposures
-            if st.button("📈 Download Gamma Data (CSV)", type="secondary"):
-                csv_data = export_manager.export_gamma_exposures_to_csv(
-                    st.session_state.gamma_exposures
-                )
-                st.download_button(
-                    label="💾 Download CSV",
-                    data=csv_data,
-                    file_name=f"gamma_exposures_{export_manager.get_export_timestamp().replace(':', '-').replace(' ', '_')}.csv",
-                    mime="text/csv"
-                )
-        
-        with col2:
-            st.subheader("🧱 Walls Export")
-            
-            if st.session_state.walls and st.button("🏗️ Download Walls (CSV)", type="secondary"):
-                csv_data = export_manager.export_walls_to_csv(st.session_state.walls)
-                st.download_button(
-                    label="💾 Download CSV",
-                    data=csv_data,
-                    file_name=f"walls_{export_manager.get_export_timestamp().replace(':', '-').replace(' ', '_')}.csv",
-                    mime="text/csv"
-                )
-        
-        with col3:
-            st.subheader("📊 Chart Export")
-            
-            if hasattr(st.session_state, 'current_chart') and st.button("🖼️ Download Chart (PNG)", type="secondary"):
-                try:
-                    # Note: PNG export requires kaleido package
-                    st.info("Chart export feature requires additional setup. Use browser's save image option for now.")
-                except Exception as e:
-                    st.error(f"Chart export error: {str(e)}")
-        
-        # Comprehensive export
-        st.subheader("📦 Complete Package")
-        if st.button("📦 Download Complete Analysis Package", type="primary"):
-            st.info("Complete package export would include all data, metrics, and charts. Feature in development.")
+    st.header("💡 Options Strategy Recommendations")
+    st.markdown("Tailored strategy suggestions based on current gamma environment and market conditions")
     
-    except ExportError as e:
-        st.error(f"❌ Export error: {str(e)}")
+    # Environment-based strategy overview
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        if gamma_env['environment'] == 'positive':
+            st.success("🛡️ **POSITIVE GAMMA ENVIRONMENT**")
+            st.markdown("**Market Characteristics:**")
+            st.markdown("- Mean-reverting price action")
+            st.markdown("- Lower volatility expected")
+            st.markdown("- Strong support/resistance at walls")
+            st.markdown("- Market makers provide stability")
+        elif gamma_env['environment'] == 'negative':
+            st.error("⚡ **NEGATIVE GAMMA ENVIRONMENT**")
+            st.markdown("**Market Characteristics:**")
+            st.markdown("- Trending/momentum price action")
+            st.markdown("- Higher volatility expected")
+            st.markdown("- Breakout/breakdown potential")
+            st.markdown("- Market makers amplify moves")
+        else:
+            st.info("⚖️ **NEUTRAL GAMMA ENVIRONMENT**")
+            st.markdown("**Market Characteristics:**")
+            st.markdown("- Mixed price action")
+            st.markdown("- Moderate volatility")
+            st.markdown("- Balanced market forces")
+            st.markdown("- Standard trading conditions")
+    
+    with col2:
+        st.markdown(f"**Environment Strength:** {strength_info['color']} {strength_info['level']}")
+        st.markdown(f"**Confidence Level:** {'High' if strength_info['level'] in ['Very Strong', 'Strong'] else 'Moderate' if strength_info['level'] == 'Moderate' else 'Low'}")
+        st.markdown(f"**Volatility Impact:** {strength_info['volatility_impact']}")
+        
+        if gamma_env['gamma_flip_level']:
+            flip_distance = gamma_env['gamma_flip_level'] - current_price
+            flip_distance_pct = (flip_distance / current_price) * 100
+            st.markdown(f"**Gamma Flip Level:** {gamma_env['gamma_flip_level']:.0f} ({flip_distance_pct:+.1f}%)")
+    
+    st.markdown("---")
+    
+    # Strategy recommendations based on environment
+    if gamma_env['environment'] == 'positive':
+        render_positive_gamma_strategies(current_price, gamma_env, walls, strength_info)
+    elif gamma_env['environment'] == 'negative':
+        render_negative_gamma_strategies(current_price, gamma_env, walls, strength_info)
+    else:
+        render_neutral_gamma_strategies(current_price, gamma_env, walls, strength_info)
+
+def render_positive_gamma_strategies(current_price: float, gamma_env: dict, walls: dict, strength_info: dict):
+    """Render strategy recommendations for positive gamma environment"""
+    
+    st.subheader("📊 Recommended Strategies for Positive Gamma")
+    
+    # Create tabs for different strategy categories
+    tab1, tab2, tab3, tab4 = st.tabs(["🎯 Premium Selling", "📉 Mean Reversion", "🛡️ Hedging", "⚠️ Avoid"])
+    
+    with tab1:
+        st.markdown("### Premium Selling Strategies")
+        st.success("**EXCELLENT ENVIRONMENT** for premium collection strategies")
+        
+        # Covered Calls
+        with st.expander("📈 **Covered Calls** - ⭐⭐⭐⭐⭐ HIGHLY RECOMMENDED", expanded=True):
+            st.markdown("**Strategy:** Sell call options against long stock position")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**✅ Why It Works:**")
+                st.markdown("- Mean-reverting environment limits upside")
+                st.markdown("- Lower volatility increases time decay")
+                st.markdown("- Call walls provide natural resistance")
+                st.markdown("- High probability of calls expiring worthless")
+            
+            with col2:
+                st.markdown("**📊 Risk/Reward:**")
+                if strength_info['level'] in ['Very Strong', 'Strong']:
+                    st.success("**Risk:** LOW | **Reward:** MODERATE-HIGH")
+                    st.markdown("- Strike Selection: 1-3% OTM (aggressive)")
+                else:
+                    st.info("**Risk:** MODERATE | **Reward:** MODERATE")
+                    st.markdown("- Strike Selection: 2-5% OTM (standard)")
+            
+            # Show specific strikes if call walls exist
+            call_walls = walls.get('call_walls', [])
+            if call_walls:
+                st.markdown("**🎯 Suggested Strikes (based on call walls):**")
+                for i, wall in enumerate(call_walls[:3], 1):
+                    distance_pct = ((wall.strike - current_price) / current_price) * 100
+                    if 0 < distance_pct <= 5:
+                        st.markdown(f"- **{wall.strike:.0f}** ({distance_pct:+.1f}%) - Strong resistance at this level")
+        
+        # Cash-Secured Puts
+        with st.expander("💰 **Cash-Secured Puts** - ⭐⭐⭐⭐ RECOMMENDED"):
+            st.markdown("**Strategy:** Sell put options with cash reserved to buy stock if assigned")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**✅ Why It Works:**")
+                st.markdown("- Put walls provide strong support")
+                st.markdown("- Mean reversion protects downside")
+                st.markdown("- Good entry strategy for long positions")
+                st.markdown("- Collect premium while waiting to buy")
+            
+            with col2:
+                st.markdown("**📊 Risk/Reward:**")
+                st.info("**Risk:** MODERATE | **Reward:** MODERATE")
+                st.markdown("- Strike Selection: At or slightly below put walls")
+                st.markdown("- Best for stocks you want to own")
+            
+            put_walls = walls.get('put_walls', [])
+            if put_walls:
+                st.markdown("**🎯 Suggested Strikes (based on put walls):**")
+                for i, wall in enumerate(put_walls[:3], 1):
+                    distance_pct = ((wall.strike - current_price) / current_price) * 100
+                    if -5 <= distance_pct < 0:
+                        st.markdown(f"- **{wall.strike:.0f}** ({distance_pct:+.1f}%) - Strong support at this level")
+        
+        # Iron Condors
+        with st.expander("🦅 **Iron Condors** - ⭐⭐⭐⭐ RECOMMENDED"):
+            st.markdown("**Strategy:** Sell OTM call spread + OTM put spread")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**✅ Why It Works:**")
+                st.markdown("- Range-bound price action expected")
+                st.markdown("- Profit from time decay on both sides")
+                st.markdown("- Walls define natural boundaries")
+                st.markdown("- Lower volatility helps all legs")
+            
+            with col2:
+                st.markdown("**📊 Risk/Reward:**")
+                st.info("**Risk:** MODERATE | **Reward:** MODERATE")
+                st.markdown("- Width: Based on wall locations")
+                st.markdown("- Best with 30-45 DTE")
+                st.markdown("- Target: 50-70% max profit")
+    
+    with tab2:
+        st.markdown("### Mean Reversion Strategies")
+        st.success("**FAVORABLE ENVIRONMENT** for buying dips and selling rallies")
+        
+        with st.expander("📉 **Buy Dips (Long Stock/Calls)** - ⭐⭐⭐⭐"):
+            st.markdown("**Strategy:** Buy on pullbacks to support levels")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**✅ Why It Works:**")
+                st.markdown("- Market makers buy dips (support)")
+                st.markdown("- Put walls act as strong support")
+                st.markdown("- Mean reversion to center expected")
+                st.markdown("- Lower risk entries at support")
+            
+            with col2:
+                st.markdown("**📊 Risk/Reward:**")
+                st.success("**Risk:** LOW-MODERATE | **Reward:** MODERATE")
+                st.markdown("- Entry: Near put walls")
+                st.markdown("- Stop: Below major put wall")
+                st.markdown("- Target: Call walls or flip level")
+        
+        with st.expander("📈 **Sell Rallies (Short Calls/Stock)** - ⭐⭐⭐"):
+            st.markdown("**Strategy:** Sell or take profits at resistance")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**✅ Why It Works:**")
+                st.markdown("- Market makers sell rallies (resistance)")
+                st.markdown("- Call walls act as strong resistance")
+                st.markdown("- Mean reversion back down expected")
+            
+            with col2:
+                st.markdown("**📊 Risk/Reward:**")
+                st.info("**Risk:** MODERATE | **Reward:** MODERATE")
+                st.markdown("- Entry: Near call walls")
+                st.markdown("- Stop: Above major call wall")
+                st.markdown("- Target: Put walls or center")
+    
+    with tab3:
+        st.markdown("### Hedging Strategies")
+        st.info("**OPTIONAL** - Lower urgency in stable environment")
+        
+        with st.expander("🛡️ **Protective Puts** - ⭐⭐⭐"):
+            st.markdown("**Strategy:** Buy puts to protect long positions")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**✅ Considerations:**")
+                st.markdown("- Less urgent in positive gamma")
+                st.markdown("- Lower volatility = cheaper puts")
+                st.markdown("- Good time to buy protection")
+                st.markdown("- Consider longer-dated options")
+            
+            with col2:
+                st.markdown("**📊 Risk/Reward:**")
+                st.info("**Cost:** LOW | **Protection:** HIGH")
+                st.markdown("- Strike: At or below put walls")
+                st.markdown("- Expiration: 60-90 DTE")
+                st.markdown("- Cost-effective insurance")
+    
+    with tab4:
+        st.markdown("### Strategies to Avoid")
+        st.error("**NOT RECOMMENDED** in positive gamma environment")
+        
+        with st.expander("❌ **Long Volatility Plays** - ⭐ AVOID"):
+            st.markdown("**Why Avoid:**")
+            st.markdown("- Volatility likely to decrease")
+            st.markdown("- Long straddles/strangles will lose value")
+            st.markdown("- Vega works against you")
+            st.markdown("- Time decay accelerates in low vol")
+        
+        with st.expander("❌ **Momentum/Breakout Trades** - ⭐ AVOID"):
+            st.markdown("**Why Avoid:**")
+            st.markdown("- Mean reversion fights momentum")
+            st.markdown("- Breakouts likely to fail at walls")
+            st.markdown("- Market makers provide resistance")
+            st.markdown("- Better to fade moves than chase them")
+
+def render_negative_gamma_strategies(current_price: float, gamma_env: dict, walls: dict, strength_info: dict):
+    """Render strategy recommendations for negative gamma environment"""
+    
+    st.subheader("⚡ Recommended Strategies for Negative Gamma")
+    
+    tab1, tab2, tab3, tab4 = st.tabs(["📈 Momentum", "🌪️ Volatility", "🛡️ Protection", "⚠️ Avoid"])
+    
+    with tab1:
+        st.markdown("### Momentum Strategies")
+        st.success("**EXCELLENT ENVIRONMENT** for trend following")
+        
+        with st.expander("🚀 **Breakout Trading** - ⭐⭐⭐⭐⭐ HIGHLY RECOMMENDED", expanded=True):
+            st.markdown("**Strategy:** Buy breakouts above resistance or sell breakdowns below support")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**✅ Why It Works:**")
+                st.markdown("- Market makers amplify moves")
+                st.markdown("- Momentum accelerates on breaks")
+                st.markdown("- Trending environment expected")
+                st.markdown("- Follow the flow, don't fight it")
+            
+            with col2:
+                st.markdown("**📊 Risk/Reward:**")
+                if strength_info['level'] in ['Very Strong', 'Strong']:
+                    st.success("**Risk:** MODERATE | **Reward:** HIGH")
+                    st.markdown("- Entry: On breakout confirmation")
+                else:
+                    st.info("**Risk:** MODERATE-HIGH | **Reward:** MODERATE-HIGH")
+                    st.markdown("- Entry: Wait for confirmation")
+            
+            if gamma_env['gamma_flip_level']:
+                flip_level = gamma_env['gamma_flip_level']
+                flip_distance = flip_level - current_price
+                st.markdown(f"**🎯 Key Level to Watch: {flip_level:.0f}**")
+                if flip_distance > 0:
+                    st.markdown(f"- Breakout above {flip_level:.0f} could accelerate upward momentum")
+                else:
+                    st.markdown(f"- Breakdown below {flip_level:.0f} could accelerate downward momentum")
+        
+        with st.expander("📊 **Directional Options** - ⭐⭐⭐⭐ RECOMMENDED"):
+            st.markdown("**Strategy:** Buy calls (bullish) or puts (bearish) to capture directional moves")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**✅ Why It Works:**")
+                st.markdown("- Large moves more likely")
+                st.markdown("- Volatility expansion helps")
+                st.markdown("- Leverage momentum with options")
+                st.markdown("- Defined risk with unlimited upside")
+            
+            with col2:
+                st.markdown("**📊 Risk/Reward:**")
+                st.success("**Risk:** LIMITED (premium paid) | **Reward:** HIGH")
+                st.markdown("- Strike: ATM or slightly ITM")
+                st.markdown("- Expiration: 30-60 DTE")
+                st.markdown("- Size appropriately for volatility")
+    
+    with tab2:
+        st.markdown("### Volatility Strategies")
+        st.success("**FAVORABLE ENVIRONMENT** for volatility expansion")
+        
+        with st.expander("🌪️ **Long Straddles/Strangles** - ⭐⭐⭐⭐ RECOMMENDED"):
+            st.markdown("**Strategy:** Buy ATM call + ATM put (straddle) or OTM versions (strangle)")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**✅ Why It Works:**")
+                st.markdown("- Volatility likely to increase")
+                st.markdown("- Large moves expected")
+                st.markdown("- Profit from move in either direction")
+                st.markdown("- Vega works in your favor")
+            
+            with col2:
+                st.markdown("**📊 Risk/Reward:**")
+                st.info("**Risk:** MODERATE (premium paid) | **Reward:** HIGH")
+                st.markdown("- Best before major moves")
+                st.markdown("- Need significant move to profit")
+                st.markdown("- Consider IV levels before entry")
+        
+        with st.expander("📈 **Calendar Spreads (Reverse)** - ⭐⭐⭐"):
+            st.markdown("**Strategy:** Sell longer-dated, buy shorter-dated options")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**✅ Why It Works:**")
+                st.markdown("- Profit from near-term vol expansion")
+                st.markdown("- Short-term gamma increases faster")
+                st.markdown("- Defined risk strategy")
+            
+            with col2:
+                st.markdown("**📊 Risk/Reward:**")
+                st.info("**Risk:** LIMITED | **Reward:** MODERATE")
+                st.markdown("- Best with upcoming catalysts")
+                st.markdown("- Advanced strategy")
+    
+    with tab3:
+        st.markdown("### Protection Strategies")
+        st.error("**CRITICAL** - High priority for risk management")
+        
+        with st.expander("🛡️ **Protective Puts** - ⭐⭐⭐⭐⭐ ESSENTIAL", expanded=True):
+            st.markdown("**Strategy:** Buy puts to protect long positions")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**✅ Why It's Critical:**")
+                st.markdown("- High risk of sharp moves")
+                st.markdown("- Downside can accelerate quickly")
+                st.markdown("- Insurance is expensive but necessary")
+                st.markdown("- Protect against gap risk")
+            
+            with col2:
+                st.markdown("**📊 Risk/Reward:**")
+                st.error("**Cost:** HIGH | **Protection:** ESSENTIAL")
+                st.markdown("- Strike: 5-10% OTM")
+                st.markdown("- Expiration: Match your time horizon")
+                st.markdown("- Consider this mandatory insurance")
+        
+        with st.expander("⚠️ **Tight Stop Losses** - ⭐⭐⭐⭐⭐ ESSENTIAL"):
+            st.markdown("**Strategy:** Use tighter stops than normal")
+            
+            st.markdown("**Why It's Critical:**")
+            st.markdown("- Moves can accelerate quickly")
+            st.markdown("- Market makers amplify momentum")
+            st.markdown("- Small losses can become large fast")
+            st.markdown("- Reduce position sizes accordingly")
+    
+    with tab4:
+        st.markdown("### Strategies to Avoid")
+        st.error("**HIGH RISK** in negative gamma environment")
+        
+        with st.expander("❌ **Covered Calls** - ⭐ AVOID OR USE DEFENSIVELY"):
+            st.markdown("**Why Risky:**")
+            st.markdown("- High assignment risk in momentum environment")
+            st.markdown("- Upside can accelerate quickly")
+            st.markdown("- Miss out on large moves")
+            st.markdown("- If used: Sell far OTM (7-10%) or shorter duration")
+        
+        with st.expander("❌ **Short Premium Strategies** - ⭐ AVOID"):
+            st.markdown("**Why Risky:**")
+            st.markdown("- Volatility expansion works against you")
+            st.markdown("- Large moves can cause max loss")
+            st.markdown("- Iron condors/credit spreads dangerous")
+            st.markdown("- Unlimited risk in some strategies")
+        
+        with st.expander("❌ **Mean Reversion Trades** - ⭐ AVOID"):
+            st.markdown("**Why Risky:**")
+            st.markdown("- Trends can persist longer than expected")
+            st.markdown("- Fading momentum is dangerous")
+            st.markdown("- 'Catching falling knives' mentality")
+            st.markdown("- Wait for environment to change")
+
+def render_neutral_gamma_strategies(current_price: float, gamma_env: dict, walls: dict, strength_info: dict):
+    """Render strategy recommendations for neutral gamma environment"""
+    
+    st.subheader("⚖️ Recommended Strategies for Neutral Gamma")
+    
+    st.info("**BALANCED APPROACH** - Use standard options strategies with normal risk management")
+    
+    tab1, tab2 = st.tabs(["📊 Balanced Strategies", "⚠️ Risk Management"])
+    
+    with tab1:
+        st.markdown("### Balanced Strategy Approach")
+        
+        with st.expander("🎯 **Diversified Options Portfolio** - ⭐⭐⭐⭐ RECOMMENDED", expanded=True):
+            st.markdown("**Strategy:** Mix of different strategy types")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**✅ Recommended Mix:**")
+                st.markdown("- 40% Premium selling (covered calls, CSPs)")
+                st.markdown("- 30% Directional (calls/puts)")
+                st.markdown("- 20% Spreads (verticals, iron condors)")
+                st.markdown("- 10% Protection (hedges)")
+            
+            with col2:
+                st.markdown("**📊 Risk/Reward:**")
+                st.info("**Risk:** MODERATE | **Reward:** MODERATE")
+                st.markdown("- Diversification reduces risk")
+                st.markdown("- Adapt as environment changes")
+                st.markdown("- Monitor gamma shifts closely")
+        
+        with st.expander("📈 **Standard Covered Calls** - ⭐⭐⭐"):
+            st.markdown("**Strategy:** Moderate approach to premium collection")
+            st.markdown("- Strike Selection: 3-5% OTM")
+            st.markdown("- Risk: Moderate assignment risk")
+            st.markdown("- Reward: Moderate premium collection")
+        
+        with st.expander("🦅 **Iron Condors (Wider)** - ⭐⭐⭐"):
+            st.markdown("**Strategy:** Wider wings for safety")
+            st.markdown("- Width: Wider than in positive gamma")
+            st.markdown("- Risk: Moderate")
+            st.markdown("- Reward: Lower but safer")
+    
+    with tab2:
+        st.markdown("### Risk Management Focus")
+        
+        st.warning("**Key Principle:** Stay flexible and monitor for environment changes")
+        
+        with st.expander("⚠️ **Monitor Gamma Shifts**"):
+            st.markdown("**Critical Actions:**")
+            st.markdown("- Watch for environment changes daily")
+            st.markdown("- Adjust strategies as gamma shifts")
+            st.markdown("- Be ready to pivot quickly")
+            st.markdown("- Don't over-commit to any strategy")
+        
+        with st.expander("📊 **Position Sizing**"):
+            st.markdown("**Guidelines:**")
+            st.markdown("- Use smaller position sizes")
+            st.markdown("- Maintain higher cash reserves")
+            st.markdown("- Diversify across strategies")
+            st.markdown("- Don't concentrate risk")
+        
+        if gamma_env['gamma_flip_level']:
+            flip_level = gamma_env['gamma_flip_level']
+            with st.expander("🎯 **Watch Flip Level**"):
+                st.markdown(f"**Gamma Flip Level: {flip_level:.0f}**")
+                st.markdown("- Environment could change at this level")
+                st.markdown("- Prepare strategy adjustments")
+                st.markdown("- Increase monitoring near this level")
+
+def render_export_section():
+    """Render export section"""
+    # COMMENTED OUT - Export functionality disabled
+    pass
+    # if not st.session_state.data_loaded or not st.session_state.gamma_exposures:
+    #     return
+    # 
+    # st.header("💾 Export Data")
+    # 
+    # try:
+    #     export_manager = ExportManager()
+    #     
+    #     col1, col2, col3 = st.columns(3)
+    #     
+    #     with col1:
+    #         st.subheader("📊 Data Export")
+    #         
+    #         # Export gamma exposures
+    #         if st.button("📈 Download Gamma Data (CSV)", type="secondary"):
+    #             csv_data = export_manager.export_gamma_exposures_to_csv(
+    #                 st.session_state.gamma_exposures
+    #             )
+    #             st.download_button(
+    #                 label="💾 Download CSV",
+    #                 data=csv_data,
+    #                 file_name=f"gamma_exposures_{export_manager.get_export_timestamp().replace(':', '-').replace(' ', '_')}.csv",
+    #                 mime="text/csv"
+    #             )
+    #     
+    #     with col2:
+    #         st.subheader("🧱 Walls Export")
+    #         
+    #         if st.session_state.walls and st.button("🏗️ Download Walls (CSV)", type="secondary"):
+    #             csv_data = export_manager.export_walls_to_csv(st.session_state.walls)
+    #             st.download_button(
+    #                 label="💾 Download CSV",
+    #                 data=csv_data,
+    #                 file_name=f"walls_{export_manager.get_export_timestamp().replace(':', '-').replace(' ', '_')}.csv",
+    #                 mime="text/csv"
+    #             )
+    #     
+    #     with col3:
+    #         st.subheader("📊 Chart Export")
+    #         
+    #         if hasattr(st.session_state, 'current_chart') and st.button("🖼️ Download Chart (PNG)", type="secondary"):
+    #             try:
+    #                 # Note: PNG export requires kaleido package
+    #                 st.info("Chart export feature requires additional setup. Use browser's save image option for now.")
+    #             except Exception as e:
+    #                 st.error(f"Chart export error: {str(e)}")
+    #     
+    #     # Comprehensive export
+    #     st.subheader("📦 Complete Package")
+    #     if st.button("📦 Download Complete Analysis Package", type="primary"):
+    #         st.info("Complete package export would include all data, metrics, and charts. Feature in development.")
+    # 
+    # except ExportError as e:
+    #     st.error(f"❌ Export error: {str(e)}")
 
 def main():
     """Main application function"""
-    st.title("📊 SPX Gamma Exposure Calculator")
-    st.markdown("Calculate and visualize gamma exposure metrics for SPX options")
+    st.title("📊 Gamma Exposure Calculator")
+    st.markdown("Calculate and visualize gamma exposure metrics for options trading")
     
     # Render sidebar
     current_price, risk_free_rate = render_sidebar()
@@ -685,12 +1156,17 @@ def main():
     
     st.markdown("---")
     
-    render_export_section()
+    # Strategy recommendations section
+    render_strategy_recommendations(current_price)
+    
+    # Export section commented out
+    # st.markdown("---")
+    # render_export_section()
     
     # Footer
     st.markdown("---")
     st.markdown(
-        "**SPX Gamma Exposure Calculator** | "
+        "**Gamma Exposure Calculator** | "
         "Built with Streamlit | "
         f"Current Price: ${current_price:,.2f}"
     )
