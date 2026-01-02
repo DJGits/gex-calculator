@@ -144,8 +144,9 @@ class MarketMetrics:
         """Validate metrics"""
         if self.call_put_gamma_ratio < 0:
             raise ValueError(f"Call/put gamma ratio cannot be negative: {self.call_put_gamma_ratio}")
-        if self.gamma_weighted_avg_strike <= 0:
-            raise ValueError(f"Gamma weighted average strike must be positive: {self.gamma_weighted_avg_strike}")
+        # Allow gamma_weighted_avg_strike to be 0 (when there's no gamma exposure)
+        if self.gamma_weighted_avg_strike < 0:
+            raise ValueError(f"Gamma weighted average strike cannot be negative: {self.gamma_weighted_avg_strike}")
         if self.gamma_exposure_std < 0:
             raise ValueError(f"Standard deviation cannot be negative: {self.gamma_exposure_std}")
     
