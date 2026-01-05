@@ -10,7 +10,7 @@ import numpy as np
 from typing import List, Dict, Any, Optional, Tuple
 
 from data.models import GammaExposure, WallLevel
-from config import (CHART_HEIGHT, CHART_WIDTH, CALL_WALL_COLOR, 
+from app_config import (CHART_HEIGHT, CHART_WIDTH, CALL_WALL_COLOR, 
                    PUT_WALL_COLOR, CURRENT_PRICE_COLOR)
 
 

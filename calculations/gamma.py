@@ -9,8 +9,8 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 from data.models import OptionsContract, GammaExposure
-from config import SPX_CONTRACT_MULTIPLIER, DEFAULT_RISK_FREE_RATE, DEFAULT_VOLATILITY
-from config import MIN_TIME_TO_EXPIRY, MAX_TIME_TO_EXPIRY, MIN_VOLATILITY, MAX_VOLATILITY
+from app_config import SPX_CONTRACT_MULTIPLIER, DEFAULT_RISK_FREE_RATE, DEFAULT_VOLATILITY
+from app_config import MIN_TIME_TO_EXPIRY, MAX_TIME_TO_EXPIRY, MIN_VOLATILITY, MAX_VOLATILITY
 
 
 class GammaCalculationError(Exception):
@@ -23,16 +23,19 @@ class GammaCalculator:
     
     def __init__(self, 
                  risk_free_rate: float = DEFAULT_RISK_FREE_RATE,
-                 contract_multiplier: int = SPX_CONTRACT_MULTIPLIER):
+                 contract_multiplier: int = SPX_CONTRACT_MULTIPLIER,
+                 debug: bool = False):
         """
         Initialize gamma calculator
         
         Args:
             risk_free_rate: Risk-free interest rate (default from config)
             contract_multiplier: Contract multiplier for exposure calculation
+            debug: Enable debug mode for detailed variable printing
         """
         self.risk_free_rate = risk_free_rate
         self.contract_multiplier = contract_multiplier
+        self.debug = debug
         self.validate_parameters()
     
     def validate_parameters(self):
@@ -44,26 +47,29 @@ class GammaCalculator:
     
     def calculate_time_to_expiry(self, expiry_date: datetime, current_date: Optional[datetime] = None) -> float:
         """
-        Calculate time to expiry in years
+        Calculate time to expiry in years with intraday precision.
         
         Args:
-            expiry_date: Option expiry date
-            current_date: Current date (defaults to now)
+            expiry_date: Option expiration datetime
+            current_date: Current datetime (defaults to now)
             
         Returns:
-            Time to expiry in years
+            Time to expiry in years (annualized), clamped to [MIN_TIME_TO_EXPIRY, MAX_TIME_TO_EXPIRY]
+        
+        Note:
+            - Uses 365.25 days per year to account for leap years
+            - Expired options are clamped to MIN_TIME_TO_EXPIRY (1 day)
+            - Very long-dated options are clamped to MAX_TIME_TO_EXPIRY (5 years)
+            - Provides intraday precision using total_seconds()
         """
         if current_date is None:
             current_date = datetime.now()
         
+        # Calculate precise time difference in years
         time_diff = (expiry_date - current_date).total_seconds() / (365.25 * 24 * 3600)
         
-        # For options expiring today or very soon, use minimum time to expiry
-        if time_diff <= 0:
-            time_to_expiry = MIN_TIME_TO_EXPIRY  # Use minimum instead of raising error
-        else:
-            # Ensure time is within reasonable bounds
-            time_to_expiry = max(MIN_TIME_TO_EXPIRY, min(MAX_TIME_TO_EXPIRY, time_diff))
+        # Apply bounds to prevent extreme values
+        time_to_expiry = max(MIN_TIME_TO_EXPIRY, min(MAX_TIME_TO_EXPIRY, time_diff))
         
         return time_to_expiry
     
@@ -121,7 +127,8 @@ class GammaCalculator:
                           gamma: float, 
                           open_interest: int, 
                           spot: float,
-                          option_type: str) -> float:
+                          option_type: str,
+                          strike: float = None) -> float:
         """
         Calculate gamma exposure (gamma × open interest × multiplier × spot)
         
@@ -130,6 +137,7 @@ class GammaCalculator:
             open_interest: Number of contracts
             spot: Current underlying price
             option_type: 'call' or 'put'
+            strike: Strike price (for debug output)
             
         Returns:
             Gamma exposure value
@@ -138,6 +146,14 @@ class GammaCalculator:
             raise GammaCalculationError(f"Open interest cannot be negative: {open_interest}")
         if spot <= 0:
             raise GammaCalculationError(f"Spot price must be positive: {spot}")
+        
+        if self.debug and strike is not None:
+            print(f"\n  DEBUG: calculate_exposure() for {option_type.upper()} at strike {strike}")
+            print(f"    gamma                = {gamma:>20.10f}")
+            print(f"    open_interest        = {open_interest:>20,}")
+            print(f"    contract_multiplier  = {self.contract_multiplier:>20,}")
+            print(f"    spot                 = {spot:>20.2f}")
+            print(f"    raw_exposure         = {gamma * open_interest * self.contract_multiplier * spot:>20,.2f}")
         
         # Basic exposure calculation
         exposure = gamma * open_interest * self.contract_multiplier * spot
@@ -148,8 +164,15 @@ class GammaCalculator:
         # - When MM are short puts, they have positive gamma (need to sell as price falls)
         if option_type == 'call':
             exposure = -exposure  # Negative for calls (resistance)
+            if self.debug and strike is not None:
+                print(f"    sign_convention      = -1 (call = negative)")
         else:  # put
             exposure = exposure   # Positive for puts (support)
+            if self.debug and strike is not None:
+                print(f"    sign_convention      = +1 (put = positive)")
+        
+        if self.debug and strike is not None:
+            print(f"    final_exposure       = {exposure:>20,.2f}")
         
         return float(exposure)
     
@@ -169,12 +192,30 @@ class GammaCalculator:
             Gamma exposure for the contract
         """
         try:
+            if self.debug:
+                print(f"\n{'='*80}")
+                print(f"DEBUG: calculate_contract_gamma_exposure()")
+                print(f"{'='*80}")
+                print(f"  Contract: {contract.symbol} {contract.strike} {contract.option_type.upper()}")
+                print(f"  Expiry Date: {contract.expiry_date}")
+            
             # Calculate time to expiry
             time_to_expiry = self.calculate_time_to_expiry(contract.expiry_date, current_date)
+            
+            if self.debug:
+                print(f"  Time to Expiry: {time_to_expiry:.6f} years ({time_to_expiry * 365.25:.1f} days)")
             
             # Use implied volatility from contract, with fallback
             volatility = contract.implied_volatility if contract.implied_volatility > 0 else DEFAULT_VOLATILITY
             volatility = max(MIN_VOLATILITY, min(MAX_VOLATILITY, volatility))
+            
+            if self.debug:
+                print(f"  Implied Volatility: {contract.implied_volatility:.4f} (raw)")
+                print(f"  Volatility Used: {volatility:.4f} (after bounds check)")
+                print(f"  Open Interest: {contract.open_interest:,}")
+                print(f"  Spot Price: {spot:.2f}")
+                print(f"  Strike Price: {contract.strike:.2f}")
+                print(f"  Risk-Free Rate: {self.risk_free_rate:.4f}")
             
             # Calculate gamma
             gamma = self.calculate_gamma(
@@ -185,13 +226,21 @@ class GammaCalculator:
                 option_type=contract.option_type
             )
             
+            if self.debug:
+                print(f"  Calculated Gamma: {gamma:.10f}")
+            
             # Calculate exposure
             exposure = self.calculate_exposure(
                 gamma=gamma,
                 open_interest=contract.open_interest,
                 spot=spot,
-                option_type=contract.option_type
+                option_type=contract.option_type,
+                strike=contract.strike
             )
+            
+            if self.debug:
+                print(f"  Final Exposure: {exposure:,.2f}")
+                print(f"{'='*80}\n")
             
             return exposure
             

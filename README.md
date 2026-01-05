@@ -196,6 +196,20 @@ Modify `config.py` to adjust:
 - Verify expiration dates are in the future
 - Check implied volatility values are reasonable (0.01-2.0)
 
+## Documentation
+
+Comprehensive documentation is available in the `docs/` folder:
+
+- **[CLI Usage Guide](docs/CLI_USAGE.md)** - Command-line tools and usage examples
+- **[Gamma Exposure Guide](docs/GAMMA_EXPOSURE_GUIDE.md)** - Understanding gamma exposure and market dynamics
+- **[Expected Move Guide](docs/EXPECTED_MOVE_GUIDE.md)** - Expected move calculations and trading implications
+- **[Debug and Testing](docs/DEBUG_AND_TESTING.md)** - Debug modes, test scripts, and troubleshooting
+- **[Technical Details](docs/TECHNICAL_DETAILS.md)** - Formulas, IV processing, and implementation notes
+- **[Download Options Usage](docs/DOWNLOAD_OPTIONS_USAGE.md)** - Options chain downloader utility
+- **[Implied Volatility Explained](docs/IMPLIED_VOLATILITY_EXPLAINED.md)** - IV sourcing and processing
+- **[Strategy Recommendations](docs/STRATEGY_RECOMMENDATIONS_FEATURE.md)** - Trading strategies based on gamma environment
+- **[Ticker Support Update](docs/TICKER_SUPPORT_UPDATE.md)** - Universal ticker support documentation
+
 ## Contributing
 
 1. Fork the repository

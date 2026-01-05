@@ -253,8 +253,14 @@ class YFinanceOptionsFetcher:
         # Remove rows with invalid strikes
         df = df[df['strike'] > 0]
         
-        # Convert expiry_date to datetime
+        # Convert expiry_date to datetime and set to 4 PM ET (market close)
         df['expiry_date'] = pd.to_datetime(df['expiry_date'])
+        
+        # Set expiry time to 4 PM (16:00) - options expire at market close
+        # This provides more accurate time-to-expiry calculations
+        df['expiry_date'] = df['expiry_date'].apply(
+            lambda x: datetime.combine(x.date(), datetime.min.time().replace(hour=16))
+        )
         
         # Remove expired options (allow options expiring today)
         today = pd.Timestamp.now().normalize()
@@ -273,6 +279,25 @@ class YFinanceOptionsFetcher:
         
         # Set minimum implied volatility
         df.loc[df['implied_volatility'] < 0.01, 'implied_volatility'] = 0.01
+        
+        # IV Normalization Strategy (same as processor.py):
+        # Yahoo Finance usually returns IV as decimal (0.25 = 25%, 1.5 = 150%)
+        # However, some strikes (especially deep ITM/OTM) may have data quality issues
+        # or return IV in percentage format
+        # 
+        # Decision logic:
+        # - If IV > 10: Likely a percentage, divide by 100 (e.g., 254 → 2.54)
+        # - If IV <= 10: Already in decimal format, use as-is (e.g., 0.25, 1.5, 2.54)
+        #
+        # Rationale: IV rarely exceeds 1000%, so any value > 10 must be a percentage
+        # This handles inconsistent data from Yahoo Finance
+        
+        # Apply normalization only to values > 10
+        mask = df['implied_volatility'] > 10.0
+        if mask.any():
+            print(f"Warning: Normalizing {mask.sum()} IV values from percentage to decimal (likely data quality issue)")
+            print(f"  Affected strikes: {df.loc[mask, 'strike'].tolist()}")
+            df.loc[mask, 'implied_volatility'] = df.loc[mask, 'implied_volatility'] / 100.0
         
         # Remove rows with zero open interest (optional - can be commented out)
         # df = df[df['open_interest'] > 0]

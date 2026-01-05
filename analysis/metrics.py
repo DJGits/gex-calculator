@@ -17,9 +17,14 @@ class MetricsCalculationError(Exception):
 class MetricsCalculator:
     """Calculates comprehensive market metrics from gamma exposure data"""
     
-    def __init__(self):
-        """Initialize metrics calculator"""
-        pass
+    def __init__(self, debug: bool = False):
+        """
+        Initialize metrics calculator
+        
+        Args:
+            debug: Enable debug mode for detailed variable printing
+        """
+        self.debug = debug
     
     def calculate_gamma_environment(self, 
                                   gamma_exposures: List[GammaExposure],
@@ -254,15 +259,71 @@ class MetricsCalculator:
             Dictionary with max_call_exposure and max_put_exposure
         """
         if not gamma_exposures:
+            if self.debug:
+                print("\n" + "="*80)
+                print("DEBUG: calculate_max_exposures()")
+                print("="*80)
+                print("No gamma exposures provided")
+                print("="*80 + "\n")
             return {'max_call_exposure': 0.0, 'max_put_exposure': 0.0}
         
+        if self.debug:
+            print("\n" + "="*80)
+            print("DEBUG: calculate_max_exposures()")
+            print("="*80)
+            print(f"Total strikes analyzed: {len(gamma_exposures)}")
+            print("\nAll Call Gamma Exposures:")
+            print("-" * 80)
+        
         # For calls, we want the most negative exposure (strongest resistance)
-        call_exposures = [ge.call_gamma_exposure for ge in gamma_exposures if ge.call_gamma_exposure < 0]
+        call_exposures = []
+        for i, ge in enumerate(gamma_exposures):
+            if ge.call_gamma_exposure < 0:
+                call_exposures.append(ge.call_gamma_exposure)
+                if self.debug:
+                    print(f"  Strike {ge.strike:>8.2f}: call_gamma_exposure = {ge.call_gamma_exposure:>20,.2f}")
+        
+        if self.debug:
+            print(f"\nTotal negative call exposures found: {len(call_exposures)}")
+            if call_exposures:
+                print(f"All negative call exposures: {[f'{x:,.2f}' for x in sorted(call_exposures)]}")
+        
         max_call_exposure = min(call_exposures) if call_exposures else 0.0
         
+        if self.debug:
+            print(f"\n{'MAX CALL EXPOSURE (most negative):':<40} {max_call_exposure:>20,.2f}")
+            if call_exposures:
+                max_strike = next((ge.strike for ge in gamma_exposures if ge.call_gamma_exposure == max_call_exposure), None)
+                if max_strike:
+                    print(f"{'Strike with max call exposure:':<40} {max_strike:>20.2f}")
+        
         # For puts, we want the most positive exposure (strongest support)
-        put_exposures = [ge.put_gamma_exposure for ge in gamma_exposures if ge.put_gamma_exposure > 0]
+        if self.debug:
+            print("\n" + "-" * 80)
+            print("All Put Gamma Exposures:")
+            print("-" * 80)
+        
+        put_exposures = []
+        for ge in gamma_exposures:
+            if ge.put_gamma_exposure > 0:
+                put_exposures.append(ge.put_gamma_exposure)
+                if self.debug:
+                    print(f"  Strike {ge.strike:>8.2f}: put_gamma_exposure = {ge.put_gamma_exposure:>20,.2f}")
+        
+        if self.debug:
+            print(f"\nTotal positive put exposures found: {len(put_exposures)}")
+            if put_exposures:
+                print(f"All positive put exposures: {[f'{x:,.2f}' for x in sorted(put_exposures, reverse=True)]}")
+        
         max_put_exposure = max(put_exposures) if put_exposures else 0.0
+        
+        if self.debug:
+            print(f"\n{'MAX PUT EXPOSURE (most positive):':<40} {max_put_exposure:>20,.2f}")
+            if put_exposures:
+                max_strike = next((ge.strike for ge in gamma_exposures if ge.put_gamma_exposure == max_put_exposure), None)
+                if max_strike:
+                    print(f"{'Strike with max put exposure:':<40} {max_strike:>20.2f}")
+            print("="*80 + "\n")
         
         return {
             'max_call_exposure': max_call_exposure,

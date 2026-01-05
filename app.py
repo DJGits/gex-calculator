@@ -679,6 +679,29 @@ def render_analysis_section(current_price: float, risk_free_rate: float):
                 with col_b:
                     st.metric("Overall Avg IV", f"{overall_avg_iv*100:.2f}%", help="Average IV across all strikes")
                 
+                # # Show detailed table of strikes used for ATM IV calculation
+                # st.markdown("---")
+                # st.write(f"**📊 Strikes Used for ATM IV Calculation (Closest {len(atm_contracts)} to ${current_price:.2f}):**")
+                
+                # # Create dataframe for ATM contracts
+                # atm_data = []
+                # for c in atm_contracts:
+                #     distance = abs(c.strike - current_price)
+                #     distance_pct = (distance / current_price) * 100
+                #     atm_data.append({
+                #         'Strike': f"{c.strike:.2f}",
+                #         'Type': c.option_type.upper(),
+                #         'IV': f"{c.implied_volatility*100:.2f}%",
+                #         'Distance': f"${distance:.2f}",
+                #         'Distance %': f"{distance_pct:.2f}%",
+                #         'Open Interest': f"{c.open_interest:,}"
+                #     })
+                
+                # atm_df = pd.DataFrame(atm_data)
+                # st.dataframe(atm_df, hide_index=True, use_container_width=True)
+                # st.caption(f"Average ATM IV: {avg_iv*100:.2f}% (used for expected move calculation)")
+                # st.caption("ATM IV is more accurate than overall average as it excludes far OTM skew effects")
+                
                 st.markdown("---")
                 st.write("**Strategy Suggestions Based on Expected Move:**")
                 st.write(f"- **Iron Condor:** Sell strikes outside 1SD range (${current_price - expected_move_1sd:.0f} - ${current_price + expected_move_1sd:.0f})")

@@ -10,7 +10,7 @@ import io
 from pathlib import Path
 
 from .models import OptionsContract, dataframe_to_options_contracts
-from config import SUPPORTED_FILE_TYPES, MAX_FILE_SIZE_MB
+from app_config import SUPPORTED_FILE_TYPES, MAX_FILE_SIZE_MB
 
 
 class DataValidationError(Exception):
@@ -227,11 +227,11 @@ class OptionsDataProcessor:
             # Rationale: IV rarely exceeds 1000%, so any value > 10 must be a percentage
             # Values 0-10 are treated as decimals since they represent 0-1000% IV range
             
-            # Apply normalization only to values > 10
-            mask = df['implied_volatility'] > 10.0
-            if mask.any():
-                print(f"Normalizing {mask.sum()} IV values from percentage to decimal")
-                df.loc[mask, 'implied_volatility'] = df.loc[mask, 'implied_volatility'] / 100.0
+            # # Apply normalization only to values > 10
+            # mask = df['implied_volatility'] > 10.0
+            # if mask.any():
+            #     print(f"Normalizing {mask.sum()} IV values from percentage to decimal")
+            #     df.loc[mask, 'implied_volatility'] = df.loc[mask, 'implied_volatility'] / 100.0
         
         # Ensure open interest is integer
         df['open_interest'] = df['open_interest'].fillna(0).astype(int)
