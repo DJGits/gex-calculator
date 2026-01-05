@@ -346,12 +346,111 @@ class VisualizationEngine:
         Returns:
             Plotly Figure object
         """
+        if not gamma_exposures:
+            # Return empty chart
+            fig = go.Figure()
+            fig.add_annotation(
+                text="No gamma exposure data available",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False,
+                font=dict(size=16, color=self.theme['text_color'])
+            )
+            fig.update_layout(
+                title=title,
+                height=self.chart_height,
+                width=self.chart_width
+            )
+            return fig
+        
         try:
-            # Create base chart
-            fig = self.create_gamma_exposure_chart(gamma_exposures, current_price, title)
+            # Prepare data
+            strikes = [ge.strike for ge in gamma_exposures]
+            net_exposures = [ge.net_gamma_exposure for ge in gamma_exposures]
+            call_exposures = [ge.call_gamma_exposure for ge in gamma_exposures]
+            put_exposures = [ge.put_gamma_exposure for ge in gamma_exposures]
+            
+            # Format exposure values for display (in millions)
+            def format_exposure(value):
+                """Format exposure value for display"""
+                if abs(value) >= 1_000_000:
+                    return f"{value/1_000_000:.1f}M"
+                elif abs(value) >= 1_000:
+                    return f"{value/1_000:.0f}K"
+                else:
+                    return f"{value:.0f}"
+            
+            text_labels = [format_exposure(exp) for exp in net_exposures]
+            
+            # Create figure
+            fig = go.Figure()
+            
+            # Add net gamma exposure bars with text labels
+            colors = [self.theme['positive_gamma_color'] if exp >= 0 else self.theme['negative_gamma_color'] 
+                     for exp in net_exposures]
+            
+            fig.add_trace(go.Bar(
+                x=strikes,
+                y=net_exposures,
+                name='Net Gamma Exposure',
+                marker_color=colors,
+                text=text_labels,
+                textposition='outside',
+                textfont=dict(size=9, color=self.theme['text_color']),
+                hovertemplate=(
+                    '<b>Strike:</b> %{x}<br>'
+                    '<b>Net Gamma Exposure:</b> %{y:,.0f}<br>'
+                    '<b>Call Exposure:</b> %{customdata[0]:,.0f}<br>'
+                    '<b>Put Exposure:</b> %{customdata[1]:,.0f}<br>'
+                    '<extra></extra>'
+                ),
+                customdata=list(zip(call_exposures, put_exposures)),
+                opacity=0.8
+            ))
+            
+            # Add current price line
+            if current_price is not None:
+                fig.add_vline(
+                    x=current_price,
+                    line_dash="dash",
+                    line_color=self.theme['current_price_color'],
+                    line_width=3,
+                    annotation_text=f"Current Price: {current_price:.0f}",
+                    annotation_position="top"
+                )
             
             # Add wall highlights
             fig = self.highlight_walls(fig, walls, show_annotations=True)
+            
+            # Update layout
+            fig.update_layout(
+                title={
+                    'text': title,
+                    'x': 0.5,
+                    'xanchor': 'center',
+                    'font': {'size': 18, 'color': self.theme['text_color']}
+                },
+                xaxis_title="Strike Price",
+                yaxis_title="Gamma Exposure",
+                height=self.chart_height,
+                width=self.chart_width,
+                plot_bgcolor=self.theme['background_color'],
+                paper_bgcolor=self.theme['background_color'],
+                font=dict(color=self.theme['text_color']),
+                hovermode='x unified',
+                showlegend=True
+            )
+            
+            # Update axes
+            fig.update_xaxes(
+                gridcolor=self.theme['grid_color'],
+                showgrid=True,
+                tickformat='.0f'
+            )
+            fig.update_yaxes(
+                gridcolor=self.theme['grid_color'],
+                showgrid=True,
+                tickformat='~s'
+            )
             
             return fig
             
